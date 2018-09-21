@@ -57,6 +57,7 @@ $HIP_PATH=$ENV{'HIP_PATH'} // dirname (dirname $0); # use parent directory of hi
 $HIP_VDI_HOME=$ENV{'HIP_VDI_HOME'};
 $HIP_CLANG_PATH=$ENV{'HIP_CLANG_PATH'};
 $DEVICE_LIB_PATH=$ENV{'DEVICE_LIB_PATH'};
+$HIP_EARLY_FINALIZE=$ENV{'HIP_EARLY_FINALIZE'};
 $HIP_CLANG_HCC_COMPAT_MODE=$ENV{'HIP_CLANG_HCC_COMPAT_MODE'}; # HCC compatibility mode
 $HIP_AUTO_INCLUDE_HEADER=$ENV{'HIP_AUTO_INCLUDE_HEADER'}; # includes hip_runtime.h automatically
 
@@ -162,10 +163,16 @@ if ($HIP_PLATFORM eq "clang") {
     if ($HIP_AUTO_INCLUDE_HEADER) {
         $HIPCXXFLAGS .= " --include=hip/hip_runtime.h";
     }
-    $HIPLDFLAGS .= " --hip-device-lib-path=$DEVICE_LIB_PATH -L$HIP_LIB_PATH -Wl,--rpath=$HIP_LIB_PATH -lhip_hcc";
+
+    $HIP_DEVLIB_FLAGS = " --hip-device-lib-path=$DEVICE_LIB_PATH";
+
+    $HIPLDFLAGS .= " $HIP_DEVLIB_FLAGS -L$HIP_LIB_PATH -Wl,--rpath=$HIP_LIB_PATH -lhip_hcc";
     if ($HIP_CLANG_HCC_COMPAT_MODE) {
         ## Allow __fp16 as function parameter and return type.
         $HIPCXXFLAGS .= " -Xclang -fallow-half-arguments-and-returns -D__HIP_HCC_COMPAT_MODE__=1";
+    }
+    if ($HIP_EARLY_FINALIZE) {
+        $HIPCXXFLAGS .= " --hip-early-finalize $HIP_DEVLIB_FLAGS";
     }
 } elsif ($HIP_PLATFORM eq "hcc") {
     $HIP_INCLUDE_PATH = "$HIP_PATH/include";
@@ -381,6 +388,11 @@ foreach $arg (@ARGV)
     # hip-clang does not accept --amdgpu-target= options.
     if (($arg =~ /--amdgpu-target=/) and $HIP_PLATFORM eq 'clang' ) {
         $swallowArg = 1;
+    }
+
+    # hip-clang needs device lib path for early finalization.
+    if (($trimarg eq '--hip-early-finalize') and ($HIP_PLATFORM eq 'clang')) {
+        $HIPCXXFLAGS .= " $HIP_DEVLIB_FLAGS";
     }
 
     if(($trimarg eq '-stdlib=libstdc++') and ($setStdLib eq 0))

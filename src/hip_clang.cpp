@@ -141,8 +141,7 @@ extern "C" void __hipRegisterFunction(
       functions[deviceId] = function;
     }
     else {
-      fprintf(stderr, "kernel %s for device %d not found!\n", deviceName, deviceId);
-      abort();
+      fprintf(stderr, "Warning: kernel %s for device %d not found!\n", deviceName, deviceId);
     }
   }
 
